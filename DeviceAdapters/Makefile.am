@@ -126,6 +126,7 @@ SUBDIRS = \
 	IsmatecMCP \
 	K8055 \
 	K8061 \
+	LaserDriver \
 	LaserQuantumLaser \
 	LeicaDMI \
 	LeicaDMR \
