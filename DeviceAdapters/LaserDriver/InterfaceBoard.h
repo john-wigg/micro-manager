@@ -14,8 +14,10 @@ class InterfaceBoard
     public:
         InterfaceBoard();
         ~InterfaceBoard();
+        int Open();
         int WriteAnalog(unsigned int channel, double physical_value) const;
         int WriteDigital(unsigned int channel, bool value) const;
+        bool DeviceIsOpen() const;
     private:
         comedi_t *device_;
         int analog_n_channels_; /* Number of analog channels. */

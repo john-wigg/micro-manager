@@ -26,8 +26,11 @@
 #ifndef _LASERDRIVER_H_
 #define _LASERDRIVER_H_
 
-#include "DeviceBase.h"
-#include "DeviceThreads.h"
+#include "InterfaceBoard.h"
+
+#include "../../MMDevice/MMDevice.h"
+#include "../../MMDevice/DeviceBase.h"
+#include "../../MMDevice/ModuleInterface.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // Error codes
@@ -52,10 +55,14 @@ public:
    int SetLEDVoltage(int idx, double voltage) const;
    int SetLEDEnabled(int idx, bool enabled) const;
 
+   int OnLedOnOff(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnLedVoltage(MM::PropertyBase* pProp, MM::ActionType eAct);
+
    bool Busy() { return false; }
 
 private:
    bool initialized_;
+   InterfaceBoard interface_;
 };
 
 #endif //_LASERDRIVER_H_

@@ -24,11 +24,15 @@
 //
 
 #include "LaserDriver.h"
-#include "ModuleInterface.h"
 
-using namespace std;
+#include "InterfaceBoard.h"
+
+#include <iostream>
 
 const char* g_LaserDriverName = "LaserDriver";
+
+const char* ON = "On";
+const char* OFF = "Off";
 
 ///////////////////////////////////////////////////////////////////////////////
 // Exported MMDevice API
@@ -80,6 +84,47 @@ MODULE_API void DeleteDevice(MM::Device* pDevice)
 LaserDriver::LaserDriver() {
    // call the base class method to set-up default error codes/messages
    InitializeDefaultErrorMessages();
+
+   CPropertyAction* pAct = new CPropertyAction (this, &LaserDriver::OnLedVoltage);
+
+   int ret;
+   ret = CreateFloatProperty("Voltage Analog 1", 0.0, false, pAct);
+   ret = CreateFloatProperty("Voltage Analog 2", 0.0, false, pAct);
+   ret = CreateFloatProperty("Voltage Analog 3", 0.0, false, pAct);
+   ret = CreateFloatProperty("Voltage Analog 4", 0.0, false, pAct);
+   ret = CreateFloatProperty("Voltage Analog 5", 0.0, false, pAct);
+
+   assert(ret == DEVICE_OK);
+
+   ret = SetPropertyLimits("Voltage Analog 1", 0.0, 5.0);
+   ret = SetPropertyLimits("Voltage Analog 2", 0.0, 5.0);
+   ret = SetPropertyLimits("Voltage Analog 3", 0.0, 5.0);
+   ret = SetPropertyLimits("Voltage Analog 4", 0.0, 5.0);
+   ret = SetPropertyLimits("Voltage Analog 5", 0.0, 5.0);
+
+   assert(ret == DEVICE_OK);
+
+   pAct = new CPropertyAction (this, &LaserDriver::OnLedOnOff);
+
+   ret = CreateStringProperty("Enable Digital 1", OFF, false, pAct);
+   ret = CreateStringProperty("Enable Digital 2", OFF, false, pAct);
+   ret = CreateStringProperty("Enable Digital 3", OFF, false, pAct);
+   ret = CreateStringProperty("Enable Digital 4", OFF, false, pAct);
+   ret = CreateStringProperty("Enable Digital 5", OFF, false, pAct);
+
+   assert(ret == DEVICE_OK);
+
+   std::vector<std::string> digitalValues;
+   digitalValues.push_back(OFF);
+   digitalValues.push_back(ON);
+
+   ret = SetAllowedValues("Enable Digital 1", digitalValues);
+   ret = SetAllowedValues("Enable Digital 2", digitalValues);
+   ret = SetAllowedValues("Enable Digital 3", digitalValues);
+   ret = SetAllowedValues("Enable Digital 4", digitalValues);
+   ret = SetAllowedValues("Enable Digital 5", digitalValues);
+
+   assert(ret == DEVICE_OK);
 
    /*
     // Description property
@@ -137,6 +182,12 @@ int LaserDriver::Initialize()
    if (initialized_)
       return DEVICE_OK;
 
+   interface_.Open();
+   if (!interface_.DeviceIsOpen()) {
+      LogMessage("Comedi driver could not open the device!");
+      return DEVICE_ERR;
+   }
+
    initialized_ = true;
    return DEVICE_OK;
 }
@@ -149,14 +200,105 @@ int LaserDriver::Initialize()
 */
 int LaserDriver::Shutdown()
 {
+
    initialized_ = false;
    return DEVICE_OK;
 }
 
+int LaserDriver::OnLedOnOff(MM::PropertyBase* pProp, MM::ActionType eAct) {   
+   // TODO: Check MM::BeforeSet to check whether values are as expected.
+   if (eAct == MM::AfterSet) {
+      std::string value;
+      std::string pName = pProp->GetName();
+      pProp->Get(value);
+
+      int ret;
+      int idx = -1;
+
+      if (pName == "Enable Digital 1") {
+         idx = 0;
+      } else if (pName == "Enable Digital 2") {
+         idx = 1;
+      } else if (pName == "Enable Digital 3") {
+         idx = 2;
+      } else if (pName == "Enable Digital 4") {
+         idx = 3;
+      } else if (pName == "Enable Digital 5") {
+         idx = 4;
+      }
+
+      if (value == ON) {
+         ret = SetLEDEnabled(idx, true);
+      } else {
+         ret = SetLEDEnabled(idx, false);
+      }
+
+      if (ret != DEVICE_OK) {
+         // error occured; revert values and return
+         if (value == ON) {
+            pProp->Set(OFF);
+         } else {
+            pProp->Set(ON);
+         }
+         return ret;
+      }
+   }
+   return DEVICE_OK;
+}
+
+int LaserDriver::OnLedVoltage(MM::PropertyBase* pProp, MM::ActionType eAct) {
+   if (eAct == MM::AfterSet) {
+      double value;
+      std::string pName = pProp->GetName();
+      pProp->Get(value);
+
+      int ret;
+      int idx = -1;
+
+      if (pName == "Voltage Analog 1") {
+         idx = 0;
+      } else if (pName == "Voltage Analog 2") {
+         idx = 1;
+      } else if (pName == "Voltage Analog 3") {
+         idx = 2;
+      } else if (pName == "Voltage Analog 4") {
+         idx = 3;
+      } else if (pName == "Voltage Analog 5") {
+         idx = 4;
+      }
+
+      ret = SetLEDVoltage(idx, value);
+
+      if (ret != DEVICE_OK) {
+         // error occure
+         // TODO: Maybe this should be handled in some way?
+         return ret;
+      }
+   }
+
+   return DEVICE_OK;
+}
+
 int LaserDriver::SetLEDEnabled(int idx, bool enabled) const {
-    return DEVICE_OK;
+   if (!interface_.DeviceIsOpen()) {
+      LogMessage("No open device!");
+      return DEVICE_ERR;
+   } else {
+      LogMessage("Device is open; attempting to write.");
+   }
+   int ret = interface_.WriteDigital(idx, enabled);
+   if (ret == 1) { // error
+      return DEVICE_ERR;
+   }
+   return DEVICE_OK;
 }
 
 int LaserDriver::SetLEDVoltage(int idx, double voltage) const {
-    return DEVICE_OK;
+   int ret = interface_.WriteAnalog(idx, voltage);
+   if (ret == 1) { // error
+      // Debug
+      LogMessage("Could not set analog value!", false);
+      return DEVICE_ERR;
+   }
+   return DEVICE_OK;
 }

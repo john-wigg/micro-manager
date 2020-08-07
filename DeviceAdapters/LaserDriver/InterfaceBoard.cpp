@@ -1,19 +1,25 @@
-#include <InterfaceBoard.h>
+#include "InterfaceBoard.h"
 
 #include <comedilib.h>
 
 InterfaceBoard::InterfaceBoard() {
-	device_ = comedi_open(filename);
-	if (device_ == NULL) {
-		comedi_perror(filename);
-		return; // TODO: error handling
-	}
-    analog_n_channels_ = comedi_get_n_channels(device_, SUBDEV_AO);
-    digital_n_channels_ = comedi_get_n_channels(device_, SUBDEV_DO);
+
 }
 
 InterfaceBoard::~InterfaceBoard() {
 
+}
+
+int InterfaceBoard::Open() {
+	device_ = comedi_open(filename);
+	if (device_ == NULL) {
+		comedi_perror(filename);
+		return 1; // error occured
+	}
+    analog_n_channels_ = comedi_get_n_channels(device_, SUBDEV_AO);
+    digital_n_channels_ = comedi_get_n_channels(device_, SUBDEV_DO);
+
+    return 0;
 }
 
 int InterfaceBoard::WriteAnalog(unsigned int channel, double physical_value) const
@@ -41,4 +47,8 @@ int InterfaceBoard::WriteDigital(unsigned int channel, bool value) const {
         return 1;
     }
     return 0;
+}
+
+bool InterfaceBoard::DeviceIsOpen() const {
+    return device_ != NULL;
 }
